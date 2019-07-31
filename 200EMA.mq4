@@ -16,13 +16,14 @@ int slopeLength = 2;
 int fastEMAPeriod = 9;
 int slowEMAPeriod = 20;
 int atrDays = 20 ;
+int absoluteMaxOrders = 10;
 
-double MAXORDERS_TOTAL = MathRound(AccountEquity() / (50)) - 1; 
+double MAXORDERS_TOTAL = MathMin(MathRound(AccountEquity() / (50)) - 1, absoluteMaxOrders);
 double MAXORDERS_CURRENCY = 1;
 
 //double numberLots = (MarketInfo(Symbol(),MODE_MINLOT)) * 1;
 
-double slMultiplier = 2;
+double slMultiplier = 4;
 double maxSpread = 0.01;
 
 int additionalOrderSpread = 300;
@@ -80,32 +81,33 @@ double calcSL() {
     
    if (OrderType() == OP_BUY) {
       //Print("Buy SL");
-      if (OrderStopLoss() > (NormalizeDouble(OrderOpenPrice() + (2*calcSpread()),Digits))) {
-         SL = NormalizeDouble(Bid - ATR * slMultiplier,Digits);
+      if (OrderStopLoss() > (NormalizeDouble(OrderOpenPrice() + (slMultiplier * ATR),Digits))) {
+         SL = NormalizeDouble(OrderOpenPrice() + ((Bid - OrderOpenPrice())/2),Digits);
          return MathMax(SL, OrderStopLoss());
-      } else {
-         SL = MathMax(NormalizeDouble(Bid - calcSpread(),Digits),NormalizeDouble(Bid - ATR,Digits));
-         return MathMax(SL, OrderStopLoss());
-      }
+      } //else {
+      //   SL = MathMax(NormalizeDouble(Bid - calcSpread(),Digits),NormalizeDouble(Bid - ATR,Digits));
+      //   return MathMax(SL, OrderStopLoss());
+      //}
    } else if (OrderType() == OP_SELL){
-      if ((OrderStopLoss() < (NormalizeDouble(OrderOpenPrice() - (2*calcSpread()),Digits))) 
+      if ((OrderStopLoss() < (NormalizeDouble(OrderOpenPrice() - (slMultiplier * ATR),Digits))) 
       && (OrderStopLoss() != 0)) {
         // Print("SL If Before Calc: ", SL);
       //Print("Sell SL");
-         SL = NormalizeDouble(Ask + ATR * slMultiplier,Digits);
+         SL = NormalizeDouble(OrderOpenPrice() - ((Ask - OrderOpenPrice())/2),Digits);
          //Print("Calculated SL: ",SL);
          //Print("CalcSL If SL: ",SL);
-         return MathMin(SL, OrderStopLoss());
-      } else {
-         SL = MathMax(NormalizeDouble(Ask + calcSpread(),Digits),NormalizeDouble(Ask + ATR,Digits));
-         //Print("Calculated SL: ",SL);
-        // Print("CalcSL Else SL: ",SL);
          if (OrderStopLoss() == 0) {
             return SL;
          } else {
             return MathMin(SL, OrderStopLoss());
          }
-      }
+         return MathMin(SL, OrderStopLoss());
+      } //else {
+         //SL = MathMax(NormalizeDouble(Ask + calcSpread(),Digits),NormalizeDouble(Ask + ATR,Digits));
+         //Print("Calculated SL: ",SL);
+        // Print("CalcSL Else SL: ",SL);
+
+      //}
    }
    //Print("SL Calculated: ",SL);
    return 5;
@@ -132,8 +134,8 @@ double calcLots(int orderType, int lots) {
 
 void buyOrder() {
       double ATR = iATR(Symbol(),0,atrDays,0);
-      Alert("Buy Order ", Symbol());
-      order = OrderSend(Symbol(),OP_BUY,numberLots(),avgAskBid(),3,NormalizeDouble(Bid - ATR,Digits),NULL,"200EMA Buy",0,0,Green);
+      //Alert("Buy Order ", Symbol());
+      order = OrderSend(Symbol(),OP_BUY,numberLots(),avgAskBid(),3,NULL,NULL,"200EMA Buy",0,0,Green);
       if (order > 0) {
          Alert("Buy Order: ",order);
       } else if (GetLastError() == 134){
@@ -145,8 +147,8 @@ void buyOrder() {
 
 void sellOrder() {
       double ATR = iATR(Symbol(),0,atrDays,0);
-      Alert("Sell Order ", Symbol());
-      order = OrderSend(Symbol(),OP_SELL,numberLots(),avgAskBid(),3,NormalizeDouble(Ask + ATR,Digits),NULL,"200EMA Short",0,0,Green);
+      //Alert("Sell Order ", Symbol());
+      order = OrderSend(Symbol(),OP_SELL,numberLots(),avgAskBid(),3,NULL,NULL,"200EMA Short",0,0,Green);
       if (order > 0) {
          Alert("Short Order: ",order);
       } else if (GetLastError() == 134){
@@ -161,22 +163,8 @@ int setSL() {
    double SL = calcSL();
    double ATR = iATR(Symbol(),0,atrDays,0);
    
-   //Print("Order Number: ", OrderTicket());
-   //Print("Order Type: ", OrderType());
-   //Print("Ask: ",Ask, " Bid: ",Bid);
-   //Print("Pip Value until SL is set: ", pipValue - OrderProfit());
-   // Print("SL: ",SL);
-   //if (((OrderStopLoss() != SL) 
-   //   || (OrderStopLoss() == NULL)
-   //   ) 
-   //   && ((avgAskBid() > OrderOpenPrice() + ATR) || (avgAskBid() < OrderOpenPrice() - ATR))
-   //   ) {
    //Print("setSL SL: ",SL);
    if (OrderStopLoss() != SL) {
-
-      //Print("Setting SL: ", SL);
-      //Comment("SL: ", SL);
-      
       return order = OrderModify(OrderTicket(),NULL,SL,OrderTakeProfit(),NULL,Yellow);
    }
    return 0;
@@ -215,7 +203,7 @@ void buyMaint() {
    // Set SL
    //Print("Calling setSL Long");
    //Print("ATR: ",ATR);
-   setSL(); 
+   //setSL(); 
    
    if (troubleshoot == true) {
       Print("FastEMA: ", FastEMA);
@@ -228,8 +216,7 @@ void buyMaint() {
    //if (Bid <= iMA(Symbol(), 0, 200, 0, MODE_EMA,PRICE_CLOSE,0)) {
    //   closeOrder = true;
    //}
-   if ((prevFastEMA > prevSlowEMA)
-      && (FastEMA < SlowEMA)) {
+   if (FastEMA < SlowEMA) {
       orderClose = true;
       
       //(prevFastEMA > prevSlowEMA)
@@ -269,14 +256,13 @@ void sellMaint() {
    // Set SL
    //Print("Calling setSL Short");
    //Print("ATR: ",ATR);
-   setSL(); 
+   //setSL(); 
    
    //if (Ask >= iMA(Symbol(), 0, slowEMAPeriod, 0, MODE_EMA,PRICE_CLOSE,0)) {
    //   closeOrder = true;
    //}
    
-   if ((prevFastEMA < prevSlowEMA)
-      && (FastEMA > SlowEMA)) {
+   if (FastEMA > SlowEMA) {
       closeOrder = true;
    }
    // Slope of 200 EMA is 0 or negative close trade
