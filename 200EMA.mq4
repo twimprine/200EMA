@@ -12,18 +12,20 @@ bool troubleshoot = false;
 string templateFileName = "Standard Template.tpl";
 //int lotMultiplyer = MathFloor(AccountEquity() / 100);
 int order = 0;
-int slopeLength = 2;
 int fastEMAPeriod = 9;
 int slowEMAPeriod = 20;
 int atrDays = 20 ;
 int absoluteMaxOrders = 10;
 
-double MAXORDERS_TOTAL = MathMin(MathRound(AccountEquity() / (50)) - 1, absoluteMaxOrders);
+double MAXORDERS_TOTAL = 0;
 double MAXORDERS_CURRENCY = 1;
+
+int initialDay = 1;
+int prevDay = initialDay + 1;
 
 //double numberLots = (MarketInfo(Symbol(),MODE_MINLOT)) * 1;
 
-double slMultiplier = 4;
+double slPoints = 100;
 double maxSpread = 0.01;
 
 int additionalOrderSpread = 300;
@@ -33,20 +35,6 @@ double tickSize = MarketInfo(Symbol(), MODE_TICKSIZE);
 double pipValue = Point*(tickValue/tickSize);
 
 
-/*
-int doubleDown() {
-   if (OrderType() == OP_BUY) {
-      if ((OrderStopLoss() - Bid)/additionalOrderSpread >= 1) {
-         
-      }
-   } else if (OrderType() == OP_SELL) {
-      if ((Ask - OrderStopLoss())/additionalOrderSpread >= 1) {
-      
-      }
-   }
-}
-
-*/
 
 double numberLots() {
    double lotMultiplyer = (AccountFreeMargin() * .01);
@@ -74,43 +62,32 @@ double avgAskBid(){
 }
 
 double calcSL() {
-   double ATR = iATR(Symbol(),0,atrDays,0);
-   //Print("ATR: ",ATR);
-   
    double SL = 9999999999990;
-    
    if (OrderType() == OP_BUY) {
-      //Print("Buy SL");
-      if (OrderStopLoss() > (NormalizeDouble(OrderOpenPrice() + (slMultiplier * ATR),Digits))) {
-         SL = NormalizeDouble(OrderOpenPrice() + ((Bid - OrderOpenPrice())/2),Digits);
-         return MathMax(SL, OrderStopLoss());
-      } //else {
-      //   SL = MathMax(NormalizeDouble(Bid - calcSpread(),Digits),NormalizeDouble(Bid - ATR,Digits));
-      //   return MathMax(SL, OrderStopLoss());
-      //}
-   } else if (OrderType() == OP_SELL){
-      if ((OrderStopLoss() < (NormalizeDouble(OrderOpenPrice() - (slMultiplier * ATR),Digits))) 
-      && (OrderStopLoss() != 0)) {
-        // Print("SL If Before Calc: ", SL);
-      //Print("Sell SL");
-         SL = NormalizeDouble(OrderOpenPrice() - ((Ask - OrderOpenPrice())/2),Digits);
-         //Print("Calculated SL: ",SL);
-         //Print("CalcSL If SL: ",SL);
-         if (OrderStopLoss() == 0) {
-            return SL;
-         } else {
-            return MathMin(SL, OrderStopLoss());
-         }
-         return MathMin(SL, OrderStopLoss());
-      } //else {
-         //SL = MathMax(NormalizeDouble(Ask + calcSpread(),Digits),NormalizeDouble(Ask + ATR,Digits));
-         //Print("Calculated SL: ",SL);
-        // Print("CalcSL Else SL: ",SL);
-
-      //}
+  
+      if (Bid > (OrderOpenPrice() + NormalizeDouble(5*slPoints*Point, Digits))) {
+         //Print("SL: ", OrderOpenPrice() + (Bid - OrderOpenPrice())/2);
+         SL = (OrderOpenPrice() + (Bid - OrderOpenPrice())/4);
+         SL = MathMax(SL, OrderStopLoss());
+      } 
+      else if (Bid > (OrderOpenPrice() + NormalizeDouble(slPoints*Point, Digits))) {
+         //Print("SL: ", OrderOpenPrice() + (Bid - OrderOpenPrice())/2);
+         SL = (OrderOpenPrice() + (Bid - OrderOpenPrice())/2);
+         SL = MathMax(SL, OrderStopLoss());
+      }
+   } else if (OrderType() == OP_SELL) {
+      if (Ask < (OrderOpenPrice() - NormalizeDouble(5*slPoints*Point,Digits))) {
+         SL = (OrderOpenPrice() - (OrderOpenPrice() - Ask)/4);
+         SL = MathMin(SL, OrderStopLoss());
+      }
+      else if (Ask < (OrderOpenPrice() - NormalizeDouble(slPoints*Point,Digits))) {
+         SL = (OrderOpenPrice() - (OrderOpenPrice() - Ask)/2);
+         SL = MathMin(SL, OrderStopLoss());
+         
+      }
    }
-   //Print("SL Calculated: ",SL);
-   return 5;
+
+   return SL;
 }
 
 double calcLots(int orderType) {
@@ -161,7 +138,7 @@ void sellOrder() {
 int setSL() {
 
    double SL = calcSL();
-   double ATR = iATR(Symbol(),0,atrDays,0);
+   //double ATR = iATR(Symbol(),0,atrDays,0);
    
    //Print("setSL SL: ",SL);
    if (OrderStopLoss() != SL) {
@@ -172,21 +149,17 @@ int setSL() {
 
 
 
-double slope(string symbol) {
-   return (iMA(NULL, 0, slowEMAPeriod, 0, MODE_EMA,PRICE_CLOSE,0) - 
-      iMA(NULL, 0, slowEMAPeriod, 0, MODE_EMA,PRICE_CLOSE,slopeLength-1)) / slopeLength;
-}
-
 int closeOrder(int orderNum, string symbol) {
-      Print("200 EMA slope is: ", slope(symbol), " - Closing Trade");
+      //Print("200 EMA slope is: ", slope(symbol), " - Closing Trade");
       Print("Order Open: ",OrderOpenPrice());
       Print("Current Ask: ",Ask);
       //Alert("Closing");
-      Comment("");
+      Comment("pipValue: ", pipValue);
       if (!OrderClose(OrderTicket(),OrderLots(),Ask,0,Red)) {
          Alert("Could not close order: ",OrderTicket());
          return GetLastError();
       }
+      Sleep(3600000 * 8);
       return 0;
 }
 
@@ -203,7 +176,7 @@ void buyMaint() {
    // Set SL
    //Print("Calling setSL Long");
    //Print("ATR: ",ATR);
-   //setSL(); 
+   setSL(); 
    
    if (troubleshoot == true) {
       Print("FastEMA: ", FastEMA);
@@ -253,10 +226,8 @@ void sellMaint() {
       Print("PrevSlowEMA: ", prevSlowEMA);
    }
 
-   // Set SL
-   //Print("Calling setSL Short");
-   //Print("ATR: ",ATR);
-   //setSL(); 
+
+   setSL(); 
    
    //if (Ask >= iMA(Symbol(), 0, slowEMAPeriod, 0, MODE_EMA,PRICE_CLOSE,0)) {
    //   closeOrder = true;
@@ -292,7 +263,7 @@ int OnInit()
    //}
    //ChartApplyTemplate(0,templateFileName);
    // Make sure we are on the daily charts
-   ChartSetSymbolPeriod(NULL,Symbol(),PERIOD_D1);
+   ChartSetSymbolPeriod(NULL,Symbol(),PERIOD_H1);
    
 //---
    return(INIT_SUCCEEDED);
@@ -311,14 +282,15 @@ void OnDeinit(const int reason)
 //+------------------------------------------------------------------+
 void OnTick()
   {
-  
+   
+   MAXORDERS_TOTAL = MathMin(MathRound(AccountEquity() / (80)) - 1, absoluteMaxOrders);
    int symbolOrderCount = 0;
   
-   double SlowEMA = iMA(NULL,0,slowEMAPeriod,0,MODE_EMA,PRICE_CLOSE,0);
-   double prevSlowEMA = iMA(NULL,0,slowEMAPeriod,0,MODE_EMA,PRICE_CLOSE,1);
-   double FastEMA = iMA(NULL,0,fastEMAPeriod,0,MODE_EMA,PRICE_CLOSE,0);
-   double prevFastEMA = iMA(NULL,0,fastEMAPeriod,0,MODE_EMA,PRICE_CLOSE,1);
-   double ATR = iATR(Symbol(),0,atrDays,0);
+   double SlowEMA = iMA(NULL,0,slowEMAPeriod,0,MODE_EMA,PRICE_CLOSE,initialDay);
+   double prevSlowEMA = iMA(NULL,0,slowEMAPeriod,0,MODE_EMA,PRICE_CLOSE,prevDay);
+   double FastEMA = iMA(NULL,0,fastEMAPeriod,0,MODE_EMA,PRICE_CLOSE,initialDay);
+   double prevFastEMA = iMA(NULL,0,fastEMAPeriod,0,MODE_EMA,PRICE_CLOSE,prevDay);
+   //double ATR = iATR(Symbol(),0,atrDays,0);
    
 
    
@@ -329,9 +301,10 @@ void OnTick()
          }
       }
    }
-  
+   
+   Comment("pipValue: ", pipValue, " Max Orders: ", MAXORDERS_TOTAL);
    if (  
-      (OrdersTotal() < MAXORDERS_TOTAL) 
+      (OrdersTotal() <= MAXORDERS_TOTAL) 
       && (symbolOrderCount < MAXORDERS_CURRENCY)
       && (calcSpread() < maxSpread)
       && (prevFastEMA < prevSlowEMA)
@@ -339,10 +312,10 @@ void OnTick()
       
       ) {
       Print("BuyOrder");
-      Comment("Buy Order");
+      //Comment("Buy Order");
       buyOrder();
    } else if (
-      (OrdersTotal() < MAXORDERS_TOTAL) 
+      (OrdersTotal() <= MAXORDERS_TOTAL) 
       && (symbolOrderCount < MAXORDERS_CURRENCY)
       && (calcSpread() < maxSpread)
       && (prevFastEMA > prevSlowEMA)
@@ -350,7 +323,7 @@ void OnTick()
       
       ) {
       Print("Sell Order");
-      Comment("Sell Order");
+      //Comment("Sell Order");
       sellOrder();
    } 
   
@@ -358,7 +331,7 @@ void OnTick()
   for (int i = 0; i < OrdersTotal(); i++) {
    if(OrderSelect(i, SELECT_BY_POS, MODE_TRADES)) {
       if (OrderSymbol() == Symbol()) {
-         Comment("Order Profit: $", OrderProfit(), " ATR: ", ATR, " Spread: ", calcSpread());
+         Comment("Order Profit: $", OrderProfit(), " ATR: ", ATR, " Spread: ", calcSpread(), " pipValue: ", pipValue);
          if (OrderType() == 0) {
             buyMaint();
          } else if (OrderType() == 1) {
