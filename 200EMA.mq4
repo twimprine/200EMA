@@ -65,28 +65,30 @@ double calcSL() {
    double SL = 9999999999990;
    if (OrderType() == OP_BUY) {
   
-      if (Bid > (OrderOpenPrice() + NormalizeDouble(5*slPoints*Point, Digits))) {
+      if (Bid > (OrderOpenPrice() + NormalizeDouble(4*slPoints*Point, Digits))) {
          //Print("SL: ", OrderOpenPrice() + (Bid - OrderOpenPrice())/2);
-         SL = (OrderOpenPrice() + (Bid - OrderOpenPrice())/4);
+         SL = (Bid - ((Bid - OrderOpenPrice())/4));
          SL = MathMax(SL, OrderStopLoss());
       } 
       else if (Bid > (OrderOpenPrice() + NormalizeDouble(slPoints*Point, Digits))) {
          //Print("SL: ", OrderOpenPrice() + (Bid - OrderOpenPrice())/2);
-         SL = (OrderOpenPrice() + (Bid - OrderOpenPrice())/2);
+         SL = (Bid - ((Bid - OrderOpenPrice())/2));
          SL = MathMax(SL, OrderStopLoss());
       }
    } else if (OrderType() == OP_SELL) {
-      if (Ask < (OrderOpenPrice() - NormalizeDouble(5*slPoints*Point,Digits))) {
-         SL = (OrderOpenPrice() - (OrderOpenPrice() - Ask)/4);
+      if (Ask < (OrderOpenPrice() - NormalizeDouble(4*slPoints*Point,Digits))) {
+         SL = (Ask + ((OrderOpenPrice() - Ask)/4));
          SL = MathMin(SL, OrderStopLoss());
       }
       else if (Ask < (OrderOpenPrice() - NormalizeDouble(slPoints*Point,Digits))) {
-         SL = (OrderOpenPrice() - (OrderOpenPrice() - Ask)/2);
+         SL = (Ask + ((OrderOpenPrice() - Ask)/2));
          SL = MathMin(SL, OrderStopLoss());
          
       }
    }
-
+   if (SL == 9999999999990 && OrderStopLoss() == 0) {
+      SL = 0;
+   }
    return SL;
 }
 
@@ -293,7 +295,7 @@ void OnTick()
    //double ATR = iATR(Symbol(),0,atrDays,0);
    
    double weeklyTrend = iMA(NULL,10080,slowEMAPeriod,0,MODE_EMA,PRICE_CLOSE,initialDay) -
-      iMA(NULL,10080,slowEMAPeriod,0,MODE_EMA,PRICE_CLOSE,initialDay + 4);
+      iMA(NULL,10080,slowEMAPeriod,0,MODE_EMA,PRICE_CLOSE,initialDay + 20);
    
    for (int i = 0; i < OrdersTotal(); i++) {
       if(OrderSelect(i, SELECT_BY_POS, MODE_TRADES)) {
