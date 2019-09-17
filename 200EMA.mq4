@@ -292,7 +292,8 @@ void OnTick()
    double prevFastEMA = iMA(NULL,0,fastEMAPeriod,0,MODE_EMA,PRICE_CLOSE,prevDay);
    //double ATR = iATR(Symbol(),0,atrDays,0);
    
-
+   double weeklyTrend = iMA(NULL,10080,slowEMAPeriod,0,MODE_EMA,PRICE_CLOSE,initialDay) -
+      iMA(NULL,10080,slowEMAPeriod,0,MODE_EMA,PRICE_CLOSE,initialDay + 4);
    
    for (int i = 0; i < OrdersTotal(); i++) {
       if(OrderSelect(i, SELECT_BY_POS, MODE_TRADES)) {
@@ -301,14 +302,24 @@ void OnTick()
          }
       }
    }
+     
+  string trendStr;
+  if (weeklyTrend > 0) {
+   trendStr = "Positive";
+  } else if (weeklyTrend < 0) {
+   trendStr = "Negative";
+  } else {
+   trendStr = "NFC Check your code!";
+  }
    
-   Comment("pipValue: ", pipValue, " Max Orders: ", MAXORDERS_TOTAL);
+   Comment("pipValue: ", pipValue, " Max Orders: ", MAXORDERS_TOTAL, "Weekly Trend: ", trendStr);
    if (  
       (OrdersTotal() <= MAXORDERS_TOTAL) 
       && (symbolOrderCount < MAXORDERS_CURRENCY)
       && (calcSpread() < maxSpread)
       && (prevFastEMA < prevSlowEMA)
       && (FastEMA > SlowEMA)
+      && (weeklyTrend > 0)
       
       ) {
       Print("BuyOrder");
@@ -320,18 +331,20 @@ void OnTick()
       && (calcSpread() < maxSpread)
       && (prevFastEMA > prevSlowEMA)
       && (FastEMA < SlowEMA)
+      && (weeklyTrend < 0)
       
       ) {
       Print("Sell Order");
       //Comment("Sell Order");
       sellOrder();
    } 
-  
+
   
   for (int i = 0; i < OrdersTotal(); i++) {
    if(OrderSelect(i, SELECT_BY_POS, MODE_TRADES)) {
       if (OrderSymbol() == Symbol()) {
-         Comment("Order Profit: $", OrderProfit(), " ATR: ", ATR, " Spread: ", calcSpread(), " pipValue: ", pipValue);
+         Comment("Order Profit: $", OrderProfit(),  " Spread: ", calcSpread(), " pipValue: ", pipValue,
+            "Weekly Trend: ", trendStr);
          if (OrderType() == 0) {
             buyMaint();
          } else if (OrderType() == 1) {
