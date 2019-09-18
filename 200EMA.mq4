@@ -23,6 +23,9 @@ double MAXORDERS_CURRENCY = 1;
 int initialDay = 1;
 int prevDay = initialDay + 1;
 
+int sellPeriod = PERIOD_W1;
+int buyPeriod = PERIOD_H1;
+
 //double numberLots = (MarketInfo(Symbol(),MODE_MINLOT)) * 1;
 
 double slPoints = 100;
@@ -169,12 +172,12 @@ int closeOrder(int orderNum, string symbol) {
 //void buyMaint(string symbol, double atr, int orderNum, int orderType) {
 void buyMaint() {
    bool  orderClose = false;
-   double ATR = iATR(Symbol(),0,atrDays,0);
+   //double ATR = iATR(Symbol(),0,atrDays,0);
    
-   double SlowEMA = iMA(NULL,0,slowEMAPeriod,0,MODE_EMA,PRICE_CLOSE,0);
-   double prevSlowEMA = iMA(NULL,0,slowEMAPeriod,0,MODE_EMA,PRICE_CLOSE,1);
-   double FastEMA = iMA(NULL,0,fastEMAPeriod,0,MODE_EMA,PRICE_CLOSE,0);
-   double prevFastEMA = iMA(NULL,0,fastEMAPeriod,0,MODE_EMA,PRICE_CLOSE,1);
+   double SlowEMA = iMA(NULL,sellPeriod,slowEMAPeriod,0,MODE_EMA,PRICE_CLOSE,0);
+   double prevSlowEMA = iMA(NULL,sellPeriod,slowEMAPeriod,0,MODE_EMA,PRICE_CLOSE,1);
+   double FastEMA = iMA(NULL,sellPeriod,fastEMAPeriod,0,MODE_EMA,PRICE_CLOSE,0);
+   double prevFastEMA = iMA(NULL,sellPeriod,fastEMAPeriod,0,MODE_EMA,PRICE_CLOSE,1);
    // Set SL
    //Print("Calling setSL Long");
    //Print("ATR: ",ATR);
@@ -214,11 +217,11 @@ void buyMaint() {
 //void sellMaint(string symbol, double atr, int orderNum, int orderType) {
 void sellMaint() {
    bool closeOrder = false;
-   double ATR = iATR(Symbol(),0,atrDays,0);
-   double SlowEMA = iMA(NULL,0,slowEMAPeriod,0,MODE_EMA,PRICE_CLOSE,0);
-   double prevSlowEMA = iMA(NULL,0,slowEMAPeriod,0,MODE_EMA,PRICE_CLOSE,1);
-   double FastEMA = iMA(NULL,0,fastEMAPeriod,0,MODE_EMA,PRICE_CLOSE,0);
-   double prevFastEMA = iMA(NULL,0,fastEMAPeriod,0,MODE_EMA,PRICE_CLOSE,1);
+   //double ATR = iATR(Symbol(),0,atrDays,0);
+   double SlowEMA = iMA(NULL,sellPeriod,slowEMAPeriod,0,MODE_EMA,PRICE_CLOSE,0);
+   double prevSlowEMA = iMA(NULL,sellPeriod,slowEMAPeriod,0,MODE_EMA,PRICE_CLOSE,1);
+   double FastEMA = iMA(NULL,sellPeriod,fastEMAPeriod,0,MODE_EMA,PRICE_CLOSE,0);
+   double prevFastEMA = iMA(NULL,sellPeriod,fastEMAPeriod,0,MODE_EMA,PRICE_CLOSE,1);
 
 
    if (troubleshoot == true) {
@@ -238,7 +241,7 @@ void sellMaint() {
    if (FastEMA > SlowEMA) {
       closeOrder = true;
    }
-   // Slope of 200 EMA is 0 or negative close trade
+   // Slope of 200 EMA is 0 or nega tive close trade
    //if (slope(Symbol()) >= 0) {
    //  closeOrder = true;
    //}
@@ -265,7 +268,7 @@ int OnInit()
    //}
    //ChartApplyTemplate(0,templateFileName);
    // Make sure we are on the daily charts
-   ChartSetSymbolPeriod(NULL,Symbol(),PERIOD_H1);
+   //ChartSetSymbolPeriod(NULL,Symbol(),PERIOD_W1);
    
 //---
    return(INIT_SUCCEEDED);
@@ -288,10 +291,10 @@ void OnTick()
    MAXORDERS_TOTAL = MathMin(MathRound(AccountEquity() / (80)) - 1, absoluteMaxOrders);
    int symbolOrderCount = 0;
   
-   double SlowEMA = iMA(NULL,0,slowEMAPeriod,0,MODE_EMA,PRICE_CLOSE,initialDay);
-   double prevSlowEMA = iMA(NULL,0,slowEMAPeriod,0,MODE_EMA,PRICE_CLOSE,prevDay);
-   double FastEMA = iMA(NULL,0,fastEMAPeriod,0,MODE_EMA,PRICE_CLOSE,initialDay);
-   double prevFastEMA = iMA(NULL,0,fastEMAPeriod,0,MODE_EMA,PRICE_CLOSE,prevDay);
+   double SlowEMA = iMA(NULL,buyPeriod,slowEMAPeriod,0,MODE_EMA,PRICE_CLOSE,initialDay);
+   double prevSlowEMA = iMA(NULL,buyPeriod,slowEMAPeriod,0,MODE_EMA,PRICE_CLOSE,prevDay);
+   double FastEMA = iMA(NULL,buyPeriod,fastEMAPeriod,0,MODE_EMA,PRICE_CLOSE,initialDay);
+   double prevFastEMA = iMA(NULL,buyPeriod,fastEMAPeriod,0,MODE_EMA,PRICE_CLOSE,prevDay);
    //double ATR = iATR(Symbol(),0,atrDays,0);
    
    double weeklyTrend = iMA(NULL,10080,slowEMAPeriod,0,MODE_EMA,PRICE_CLOSE,initialDay) -
