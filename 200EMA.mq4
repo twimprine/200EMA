@@ -67,32 +67,43 @@ double avgAskBid(){
 double calcSL() {
    double SL = 9999999999990;
    if (OrderType() == OP_BUY) {
-  
-      if (Bid > (OrderOpenPrice() + NormalizeDouble(4*slPoints*Point, Digits))) {
+      if (Bid > (OrderOpenPrice() + NormalizeDouble(10*slPoints*Point, Digits))) {
          //Print("SL: ", OrderOpenPrice() + (Bid - OrderOpenPrice())/2);
-         SL = (Bid - ((Bid - OrderOpenPrice())/4));
-         SL = MathMax(SL, OrderStopLoss());
+         SL = (Bid - ((Bid - OrderOpenPrice())*.25));
+         return MathMax(SL, OrderStopLoss());
       } 
+      else if (Bid > (OrderOpenPrice() + NormalizeDouble(5*slPoints*Point, Digits))) {
+         //Print("SL: ", OrderOpenPrice() + (Bid - OrderOpenPrice())/2);
+         SL = (Bid - ((Bid - OrderOpenPrice())*.5));
+         return MathMax(SL, OrderStopLoss());
+      }
       else if (Bid > (OrderOpenPrice() + NormalizeDouble(slPoints*Point, Digits))) {
          //Print("SL: ", OrderOpenPrice() + (Bid - OrderOpenPrice())/2);
-         SL = (Bid - ((Bid - OrderOpenPrice())/2));
-         SL = MathMax(SL, OrderStopLoss());
+         SL = (Bid - ((Bid - OrderOpenPrice())*.75));
+         return MathMax(SL, OrderStopLoss());
       }
    } else if (OrderType() == OP_SELL) {
-      if (Ask < (OrderOpenPrice() - NormalizeDouble(4*slPoints*Point,Digits))) {
-         SL = (Ask + ((OrderOpenPrice() - Ask)/4));
-         SL = MathMin(SL, OrderStopLoss());
+   
+      if (Ask < (OrderOpenPrice() - NormalizeDouble(10*slPoints*Point,Digits))) {
+         Alert("Trying to set Sell SL!: 25%");
+         SL = (Ask + ((OrderOpenPrice() - Ask)*.25));
+         Alert("Setting SL: ", MathMin(SL, OrderStopLoss()));
+         return MathMin(SL, OrderStopLoss());
       }
+      else if (Ask < (OrderOpenPrice() - NormalizeDouble(5*slPoints*Point,Digits))) {
+         Alert("Trying to set Sell SL!: 50%");
+         SL = (Ask + ((OrderOpenPrice() - Ask)*.5));
+         Alert("Setting SL: ", MathMin(SL, OrderStopLoss()));
+         return MathMin(SL, OrderStopLoss());
+      } 
       else if (Ask < (OrderOpenPrice() - NormalizeDouble(slPoints*Point,Digits))) {
-         SL = (Ask + ((OrderOpenPrice() - Ask)/2));
-         SL = MathMin(SL, OrderStopLoss());
-         
-      }
+         Alert("Trying to set Sell SL!: 75%");
+         SL = (Ask + ((OrderOpenPrice() - Ask)*.75));
+         Alert("Setting SL: ", MathMin(SL, OrderStopLoss()));
+         return MathMin(SL, OrderStopLoss());
+      } 
    }
-   if (SL == 9999999999990 && OrderStopLoss() == 0) {
-      SL = 0;
-   }
-   return SL;
+   return 0;
 }
 
 double calcLots(int orderType) {
@@ -175,9 +186,8 @@ void buyMaint() {
    //double ATR = iATR(Symbol(),0,atrDays,0);
    
    double SlowEMA = iMA(NULL,sellPeriod,slowEMAPeriod,0,MODE_EMA,PRICE_CLOSE,0);
-   double prevSlowEMA = iMA(NULL,sellPeriod,slowEMAPeriod,0,MODE_EMA,PRICE_CLOSE,1);
    double FastEMA = iMA(NULL,sellPeriod,fastEMAPeriod,0,MODE_EMA,PRICE_CLOSE,0);
-   double prevFastEMA = iMA(NULL,sellPeriod,fastEMAPeriod,0,MODE_EMA,PRICE_CLOSE,1);
+   
    // Set SL
    //Print("Calling setSL Long");
    //Print("ATR: ",ATR);
@@ -186,8 +196,6 @@ void buyMaint() {
    if (troubleshoot == true) {
       Print("FastEMA: ", FastEMA);
       Print("SlowEMA: ", SlowEMA);
-      Print("PrevFastEMA: ", prevFastEMA);
-      Print("PrevSlowEMA: ", prevSlowEMA);
    }
    
    // Did we slip below to 200 somehow?
@@ -219,16 +227,12 @@ void sellMaint() {
    bool closeOrder = false;
    //double ATR = iATR(Symbol(),0,atrDays,0);
    double SlowEMA = iMA(NULL,sellPeriod,slowEMAPeriod,0,MODE_EMA,PRICE_CLOSE,0);
-   double prevSlowEMA = iMA(NULL,sellPeriod,slowEMAPeriod,0,MODE_EMA,PRICE_CLOSE,1);
    double FastEMA = iMA(NULL,sellPeriod,fastEMAPeriod,0,MODE_EMA,PRICE_CLOSE,0);
-   double prevFastEMA = iMA(NULL,sellPeriod,fastEMAPeriod,0,MODE_EMA,PRICE_CLOSE,1);
 
 
    if (troubleshoot == true) {
       Print("FastEMA: ", FastEMA);
       Print("SlowEMA: ", SlowEMA);
-      Print("PrevFastEMA: ", prevFastEMA);
-      Print("PrevSlowEMA: ", prevSlowEMA);
    }
 
 
@@ -297,8 +301,8 @@ void OnTick()
    double prevFastEMA = iMA(NULL,buyPeriod,fastEMAPeriod,0,MODE_EMA,PRICE_CLOSE,prevDay);
    //double ATR = iATR(Symbol(),0,atrDays,0);
    
-   double weeklyTrend = iMA(NULL,10080,slowEMAPeriod,0,MODE_EMA,PRICE_CLOSE,initialDay) -
-      iMA(NULL,10080,slowEMAPeriod,0,MODE_EMA,PRICE_CLOSE,initialDay + 20);
+   double longerTrend = iMA(NULL,sellPeriod,fastEMAPeriod,0,MODE_EMA,PRICE_CLOSE,initialDay) -
+      iMA(NULL,sellPeriod,slowEMAPeriod,0,MODE_EMA,PRICE_CLOSE,slowEMAPeriod);
    
    for (int i = 0; i < OrdersTotal(); i++) {
       if(OrderSelect(i, SELECT_BY_POS, MODE_TRADES)) {
@@ -309,22 +313,21 @@ void OnTick()
    }
      
   string trendStr;
-  if (weeklyTrend > 0) {
+  if (longerTrend > 0) {
    trendStr = "Positive";
-  } else if (weeklyTrend < 0) {
+  } else if (longerTrend < 0) {
    trendStr = "Negative";
   } else {
    trendStr = "NFC Check your code!";
   }
    
-   Comment("pipValue: ", pipValue, " Max Orders: ", MAXORDERS_TOTAL, "Weekly Trend: ", trendStr);
    if (  
       (OrdersTotal() <= MAXORDERS_TOTAL) 
       && (symbolOrderCount < MAXORDERS_CURRENCY)
       && (calcSpread() < maxSpread)
       && (prevFastEMA < prevSlowEMA)
       && (FastEMA > SlowEMA)
-      && (weeklyTrend > 0)
+      && (longerTrend > 0)
       
       ) {
       Print("BuyOrder");
@@ -336,7 +339,7 @@ void OnTick()
       && (calcSpread() < maxSpread)
       && (prevFastEMA > prevSlowEMA)
       && (FastEMA < SlowEMA)
-      && (weeklyTrend < 0)
+      && (longerTrend < 0)
       
       ) {
       Print("Sell Order");
@@ -349,7 +352,8 @@ void OnTick()
    if(OrderSelect(i, SELECT_BY_POS, MODE_TRADES)) {
       if (OrderSymbol() == Symbol()) {
          Comment("Order Profit: $", OrderProfit(),  " Spread: ", calcSpread(), " pipValue: ", pipValue,
-            "Weekly Trend: ", trendStr);
+            "\nWeekly Trend: ", trendStr, "\npip/$: ", (1/pipValue),
+            "\nSell SL: ", (OrderOpenPrice() - NormalizeDouble(slPoints*Point,Digits)));
          if (OrderType() == 0) {
             buyMaint();
          } else if (OrderType() == 1) {
