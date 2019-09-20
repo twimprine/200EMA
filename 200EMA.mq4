@@ -28,7 +28,7 @@ int buyPeriod = PERIOD_H1;
 
 //double numberLots = (MarketInfo(Symbol(),MODE_MINLOT)) * 1;
 
-double slPoints = 100;
+double slPoints = 150;
 double maxSpread = 0.01;
 
 int additionalOrderSpread = 300;
@@ -83,27 +83,30 @@ double calcSL() {
          return MathMax(SL, OrderStopLoss());
       }
    } else if (OrderType() == OP_SELL) {
-   
+      double currSL = OrderStopLoss();
+      if (currSL == 0) {
+         currSL = 9999999999;
+      }
       if (Ask < (OrderOpenPrice() - NormalizeDouble(10*slPoints*Point,Digits))) {
-         Alert("Trying to set Sell SL!: 25%");
+         //Alert("Trying to set Sell SL!: 25%");
          SL = (Ask + ((OrderOpenPrice() - Ask)*.25));
-         Alert("Setting SL: ", MathMin(SL, OrderStopLoss()));
-         return MathMin(SL, OrderStopLoss());
+         //Alert("Setting SL: ", MathMin(SL, OrderStopLoss()));
+         return MathMin(SL, currSL);
       }
       else if (Ask < (OrderOpenPrice() - NormalizeDouble(5*slPoints*Point,Digits))) {
-         Alert("Trying to set Sell SL!: 50%");
+         //Alert("Trying to set Sell SL!: 50%");
          SL = (Ask + ((OrderOpenPrice() - Ask)*.5));
-         Alert("Setting SL: ", MathMin(SL, OrderStopLoss()));
-         return MathMin(SL, OrderStopLoss());
+         //Alert("Setting SL: ", MathMin(SL, OrderStopLoss()));
+         return MathMin(SL, currSL);
       } 
       else if (Ask < (OrderOpenPrice() - NormalizeDouble(slPoints*Point,Digits))) {
-         Alert("Trying to set Sell SL!: 75%");
+         //Alert("Trying to set Sell SL!: 75%");
          SL = (Ask + ((OrderOpenPrice() - Ask)*.75));
-         Alert("Setting SL: ", MathMin(SL, OrderStopLoss()));
-         return MathMin(SL, OrderStopLoss());
+         //Alert("Setting SL: ", MathMin(SL, OrderStopLoss()));
+         return MathMin(SL, currSL);
       } 
    }
-   return 0;
+   return OrderStopLoss();
 }
 
 double calcLots(int orderType) {
